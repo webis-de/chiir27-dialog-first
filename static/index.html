@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Dialog-First Product Search</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="scenarios.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <span class="brand">Dialog-First</span>
+      <button type="button" id="restart">New exploration</button>
+    </div>
+  </header>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <main class="wrap" id="chat">
+    <div id="thread" aria-live="polite"></div>
+    <noscript><p class="notice">This prototype requires JavaScript.</p></noscript>
+  </main>
+
+  <main class="stage" id="stage" hidden></main>
+
+  <form id="composer" class="composer" autocomplete="off">
+    <div class="wrap">
+      <div id="selection" class="selection" hidden></div>
+      <div class="ask-row">
+        <input type="text" id="question" placeholder="Ask about the laptops in the catalog …" aria-label="Your question" maxlength="500">
+        <button type="submit" class="primary">Ask</button>
+      </div>
+    </div>
+  </form>
+
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-line">
+        Fictional catalog: products, prices, and shops are generated.
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
