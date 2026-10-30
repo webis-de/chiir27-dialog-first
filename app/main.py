@@ -1,7 +1,4 @@
-"""Dialog-First product search: FastAPI backend.
-
-Every turn is answered from a query plan (`plan.py`). Typed questions are parsed into plans; clicks and
-follow-up questions arrive as plans and are verbalized as user questions (`language.py`).
+"""Dialog-First product search: FastAPI backend around the answers of `service.py`.
 
 Run locally:  uvicorn app.main:app --reload
 """
@@ -11,66 +8,14 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
 
-from . import language as lang
-from .catalog import Catalog, placeholder_svg
-from .plan import Plan, execute
+from . import service
+from .catalog import placeholder_svg
+from .service import AskIn, QueryIn, catalog
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-catalog = Catalog()
 app = FastAPI(title="Dialog-First product search", docs_url=None, redoc_url=None, openapi_url=None)
-
-
-class AskIn(BaseModel):
-    text: str = Field(min_length=1, max_length=500)
-    context: Plan | None = None
-    selection: list[int] = Field(default_factory=list, max_length=60)
-
-
-class QueryIn(BaseModel):
-    plan: Plan
-
-
-def answer(plan: Plan) -> dict:
-    result = execute(catalog, plan)
-    return {
-        "kind": plan.kind,
-        "plan": plan.model_dump(),
-        "interpretation": lang.interpretation(plan, catalog),
-        **result,
-        "observations": lang.observations(plan, result),
-        "followups": [{"question": lang.question(p, catalog), "plan": p.model_dump()}
-                      for p in lang.followups(plan, result, catalog)],
-        "facets": [
-            {**facet, "values": [
-                {**value, "plan": plan.with_filter(facet["attr"], "=", value["value"]).model_dump()}
-                for value in facet["values"]]}
-            for facet in result.get("facets", [])
-        ],
-    }
-
-
-def clarify(term: str, readings: list[lang.Reading]) -> dict:
-    """A vague question: answered with its most likely reading if that is likely enough, which the answer
-    states, with the other readings as follow-ups; otherwise the readings are offered as candidates, each an
-    executable plan verbalized as an unambiguous question (P3)."""
-    top = readings[0]
-    if top.weight >= lang.CONFIDENT:
-        a = answer(top.plan)
-        others = [{"question": lang.question(r.plan, catalog), "plan": r.plan.model_dump()} for r in readings[1:]]
-        return {**a, "interpretation": f"I read “{term}” as {top.label}. {a['interpretation']}",
-                "followups": (others + a["followups"])[:3]}
-    candidates = []
-    for r in readings:
-        result = execute(catalog, r.plan)
-        candidates.append({"question": lang.question(r.plan, catalog), "plan": r.plan.model_dump(),
-                           "interpretation": lang.interpretation(r.plan, catalog), "sql": result["sql"],
-                           "total": result["total"] if r.plan.kind == "list" else len(result["rows"]),
-                           "kind": r.plan.kind})
-    return {"kind": "clarify", "term": term, "candidates": candidates,
-            "interpretation": f"“{term[0].upper() + term[1:]}” can mean several things. Which do you mean?"}
 
 
 @app.get("/healthz")
@@ -80,56 +25,33 @@ def healthz():
 
 @app.get("/api/start")
 def start():
-    """Opening of the dialog: all laptops as a first answer, most recommended first, with facets, a summary of
-    the catalog, and example questions instead of follow-ups (P2)."""
-    s = catalog.summary()
-    welcome = (f"Welcome! The catalog has {s['laptops']} laptops from {s['brands']} brands, offered by {s['shops']} shops "
-               f"for {lang.euro(s['price_min'])}–{lang.euro(s['price_max'])[1:]}. Here they are, most recommended first. "
-               f"Ask me about them, or narrow them down with the facets.")
-    opening = answer(Plan(kind="list", sort={"attr": "recommended", "dir": "desc"}))
-    return {**opening, "interpretation": welcome, "observations": [], "followups": [], "examples": lang.EXAMPLES}
+    return service.start()
 
 
 @app.post("/api/ask")
 def ask(body: AskIn):
-    selection = [i for i in body.selection if i in catalog.by_id]
-    vague = lang.readings(body.text, catalog, body.context, selection)
-    if vague:
-        return clarify(*vague)
-    plan = lang.parse(body.text, catalog, body.context, selection)
-    if plan is None:
-        return {
-            "kind": "unanswerable",
-            "interpretation": "I can't answer this from the catalog. I can find laptops by price, weight, battery "
-                              "life, RAM, storage, display, brand, rating, and delivery, compare brands, and look "
-                              "up shop offers, for example:",
-            "examples": lang.EXAMPLES,
-        }
-    return answer(plan)
+    return service.ask(body)
 
 
 @app.post("/api/query")
 def query(body: QueryIn):
-    """Clicks and follow-up questions: the plan is verbalized as the user's question (P4)."""
-    if body.plan.kind == "offers" and body.plan.product_id not in catalog.by_id:
+    try:
+        return service.query(body)
+    except service.UnknownProduct:
         raise HTTPException(404, "Unknown product")
-    return {"question": lang.question(body.plan, catalog), "answer": answer(body.plan)}
 
 
 @app.post("/api/verbalize")
 def verbalize(body: QueryIn):
-    """Question for a plan without answering it, e.g. as a preview on hover."""
-    return {"question": lang.question(body.plan, catalog)}
+    return service.verbalize(body)
 
 
 @app.get("/api/product/{product_id}")
 def product(product_id: int):
-    """Product page: details and shop offers. Opening it is a view change, not a turn."""
-    if product_id not in catalog.by_id:
+    try:
+        return service.product(product_id)
+    except service.UnknownProduct:
         raise HTTPException(404, "Unknown product")
-    offers = catalog.query("SELECT shop, price, delivery_days FROM offers WHERE laptop_id = ? "
-                           "ORDER BY price ASC, delivery_days ASC", [product_id])
-    return {"product": catalog.by_id[product_id], "offers": offers}
 
 
 @app.get("/img/{product_id}.svg")

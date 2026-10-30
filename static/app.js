@@ -85,8 +85,11 @@ function contextPlan(turn) {
   return null;
 }
 
-async function post(url, body) {
-  const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+/** API call: to the server, or, in the static deployment, to the backend running in the browser (backend.js). */
+async function api(url, body) {
+  if (window.backend) return window.backend(url, body);
+  const response = await fetch(url, body === undefined ? {}
+    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!response.ok) throw new Error(`${url}: ${response.status}`);
   return response.json();
 }
@@ -94,7 +97,7 @@ async function post(url, body) {
 async function start() {
   turns.clear();
   nextId = 1;
-  const answer = await (await fetch("/api/start")).json();
+  const answer = await api("/api/start");
   leaf = addTurn({ parent: null, role: "system", answer }).id;
   render();
 }
@@ -125,12 +128,12 @@ async function run(parentId, user, request) {
 function ask(fromId, text, note = null, badge = null, selection = []) {
   const ids = selection.map((p) => p.id);
   return run(fromId, { text, note, badge, selection },
-    () => post("/api/ask", { text, context: contextPlan(turns.get(fromId)), selection: ids }));
+    () => api("/api/ask", { text, context: contextPlan(turns.get(fromId)), selection: ids }));
 }
 
 /** A click or follow-up: the plan is verbalized as the user's question (P4). */
 function act(fromId, plan, note = "written for your click", badge = null) {
-  return run(fromId, { text: "…", note, badge, clicked: true }, () => post("/api/query", { plan }));
+  return run(fromId, { text: "…", note, badge, clicked: true }, () => api("/api/query", { plan }));
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -320,7 +323,7 @@ function toggleSelected(p) {
 const productLink = (t, p) => `<span class="view product-link" ${action(() => openProduct(t, p), { view: true })}>${esc(p.name)}</span>`;
 
 const miniProduct = (p, attrs, remove = "", cls = "") =>
-  `<span class="mini ${cls}" ${attrs}><img src="/img/${p.id}.svg" alt="" width="32" height="22">${esc(p.name)}${remove}</span>`;
+  `<span class="mini ${cls}" ${attrs}><img src="img/${p.id}.svg" alt="" width="32" height="22">${esc(p.name)}${remove}</span>`;
 
 function renderResult(t, large) {
   const a = t.answer;
@@ -342,7 +345,7 @@ function renderResult(t, large) {
 function renderCards(t, rows) {
   return `<div class="cards">${rows.map((p) => `<div class="card view ${selected.has(p.id) ? "selected" : ""}" ${action(() => openProduct(t, p), { view: true })}>
       ${selectCircle(p)}
-      <img src="/img/${p.id}.svg" alt="Placeholder image of the ${esc(p.name)}" width="160" height="110">
+      <img src="img/${p.id}.svg" alt="Placeholder image of the ${esc(p.name)}" width="160" height="110">
       <div class="name">${esc(p.name)}</div>
       <div class="specs">${inch(p.display_in)} ${p.display_type} · ${p.ram_gb} GB RAM · ${storage(p.storage_gb)}<br>
         ${p.weight_kg} kg · ${p.battery_h} h battery</div>
@@ -358,7 +361,7 @@ const stars = (rating) => {
 function renderList(t, rows) {
   return `<div class="list">${rows.map((p) => `<div class="list-item view ${selected.has(p.id) ? "selected" : ""}" ${action(() => openProduct(t, p), { view: true })}>
     ${selectCircle(p)}
-    <img src="/img/${p.id}.svg" alt="Placeholder image of the ${esc(p.name)}" width="200" height="138">
+    <img src="img/${p.id}.svg" alt="Placeholder image of the ${esc(p.name)}" width="200" height="138">
     <div class="list-info">
       <div class="name">${esc(p.name)} – ${inch(p.display_in)} ${p.display_type}, ${p.ram_gb} GB RAM, ${storage(p.storage_gb)}</div>
       <div class="rating">${stars(p.rating)} ${p.rating} <span class="reviews">(${p.reviews})</span></div>
@@ -431,7 +434,7 @@ async function filterAnswer(t, plan) {
   t.ui.filtering = true;
   render();
   try {
-    t.answer = (await post("/api/query", { plan })).answer;
+    t.answer = (await api("/api/query", { plan })).answer;
   } catch (error) {
     console.error(error);
   }
@@ -516,7 +519,7 @@ const enlarge = (t) => openStage({ kind: "answer", turn: t });
 async function openProduct(t, p) {
   const next = { kind: "product", turn: t, product: p, offers: null };
   openStage(next);
-  const data = await (await fetch(`/api/product/${p.id}`)).json();
+  const data = await api(`/api/product/${p.id}`);
   if (stage !== next) return;
   next.offers = data.offers;
   render();
@@ -538,7 +541,7 @@ function renderStage() {
   return `<div class="stage-wrap"><div class="stage-bar"><h2>${[p.brand, p.series].filter(Boolean).map(esc).join(" · ")}</h2>${close}</div>
     <div class="product-page">
       <div class="product-image ${on ? "selected" : ""}">${selectCircle(p)}
-        <img src="/img/${p.id}.svg" alt="Placeholder image of the ${esc(p.name)}" width="480" height="330"></div>
+        <img src="img/${p.id}.svg" alt="Placeholder image of the ${esc(p.name)}" width="480" height="330"></div>
       <div class="product-info">
         <h1>${esc(p.name)}</h1>
         <div class="product-rating">${p.rating} / 5${p.reviews ? ` · ${p.reviews} reviews` : ""}</div>
@@ -615,7 +618,7 @@ document.addEventListener("mouseover", async (event) => {
   else if (entry.tip.text) text = entry.tip.text;
   else {
     const key = JSON.stringify(entry.tip.plan);
-    if (!tipCache.has(key)) tipCache.set(key, post("/api/verbalize", { plan: entry.tip.plan }).then((r) => r.question));
+    if (!tipCache.has(key)) tipCache.set(key, api("/api/verbalize", { plan: entry.tip.plan }).then((r) => r.question));
     text = await tipCache.get(key);
   }
   if (event.target.closest("[data-action]") !== el) return;

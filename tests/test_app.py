@@ -150,3 +150,12 @@ def test_explicit_criteria_are_not_vague():
         assert lang.readings(text, catalog) is None
     sel = client.post("/api/ask", json={"text": "Which of them is the best?", "selection": [1, 2, 3]}).json()
     assert sel["kind"] == "clarify" and all(c["plan"]["ids"] == [1, 2, 3] for c in sel["candidates"])
+
+
+def test_static_deployment_api_matches_the_server():
+    # The browser backend (static build) answers through service.handle, the server through FastAPI.
+    import json
+    from app import service
+    body = {"text": "Which laptop is best for students?"}
+    assert json.loads(service.handle("/api/ask", json.dumps(body))) == client.post("/api/ask", json=body).json()
+    assert json.loads(service.handle("/api/product/1")) == client.get("/api/product/1").json()

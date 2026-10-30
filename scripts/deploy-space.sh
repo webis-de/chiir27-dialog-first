@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Deploys the committed state of the prototype to a Hugging Face Docker Space (the live demo).
-# The Space needs a README.md with a YAML header (sdk: docker), which this repository's README does not
-# carry; the script therefore pushes a copy of HEAD with that header prepended, replacing the Space's content.
+# Deploys the committed state of the prototype as a static Hugging Face Space (the live demo), in which the
+# backend runs in the browser with Pyodide (scripts/build-static.py). The Space's README.md carries the
+# YAML header that Hugging Face requires (sdk: static); the push replaces the Space's content.
 # Git asks for the Hugging Face user name and an access token with write permission as password.
 # Usage: scripts/deploy-space.sh <user>/<space>   (e.g. dialog-first/demo)
 set -euo pipefail
@@ -11,15 +11,16 @@ root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-git -C "$root" archive HEAD | tar -x -C "$tmp"
+mkdir "$tmp/src"
+git -C "$root" archive HEAD | tar -x -C "$tmp/src"
+python3 "$tmp/src/scripts/build-static.py" "$tmp/site" >/dev/null
 {
   printf -- '---\ntitle: Dialog-First Product Search\nemoji: 💬\ncolorFrom: gray\ncolorTo: blue\n'
-  printf -- 'sdk: docker\napp_port: 7860\npinned: false\n---\n\n'
-  cat "$tmp/README.md"
-} > "$tmp/README.space.md"
-mv "$tmp/README.space.md" "$tmp/README.md"
+  printf -- 'sdk: static\napp_file: index.html\npinned: false\n---\n\n'
+  cat "$tmp/src/README.md"
+} > "$tmp/site/README.md"
 
-cd "$tmp"
+cd "$tmp/site"
 git init -q -b main
 git add -A
 git -c user.name="Dialog-First" -c user.email="dialog-first@users.noreply.huggingface.co" \

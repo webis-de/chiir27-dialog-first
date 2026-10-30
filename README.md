@@ -5,7 +5,8 @@ It applies the Dialog-First principles to a fictional laptop
 catalog: the dialog is the interface, and result tables, product cards, facets, and queries are embedded
 into the answers.
 
-- Backend: Python FastAPI, in-memory SQLite (`app/`)
+- Backend: Python, in-memory SQLite (`app/service.py`), served by FastAPI (`app/main.py`) or run in the browser
+  with Pyodide (static build)
 - Frontend: vanilla HTML, CSS, JS (`static/`), in a plain, flat style
 - Catalog: 64 laptops of 8 fictional brands and 6 shops, generated from a fixed seed (`app/catalog.py`);
   products are shown as neutral placeholder drawings (`/img/<id>.svg`)
@@ -24,8 +25,9 @@ into the answers.
 **Try it: <DEMO-URL>**
 
 No installation is needed. A task to start with: find a light laptop under €1,000 that is delivered tomorrow
-and has a long battery life, compare a few candidates, and put one into the (fake) cart. The demo runs the
-`Dockerfile` below; to run the prototype on your own machine, see "Run locally".
+and has a long battery life, compare a few candidates, and put one into the (fake) cart. The demo is the
+static build below: the backend runs in your browser, so loading takes a few seconds the first time. To run
+the prototype on your own machine, see "Run locally".
 
 ## How it works
 
@@ -84,19 +86,29 @@ python3 -m venv .venv
 
 Then open http://localhost:8027. Tests: `.venv/bin/python -m pytest`
 
-## Demo container
+## Static build (live demo)
 
-The `Dockerfile` runs the prototype as a demo (port 7860, e.g., a Hugging Face Space):
+The static build runs the Python backend in the browser with Pyodide (`static/backend.js`), so that the
+prototype can be hosted on any static web server:
 
 ```bash
-docker build -t dialog-first . && docker run -p 7860:7860 dialog-first
+python3 scripts/build-static.py                  # writes build/static
+python3 -m http.server -d build/static 8028      # try it at http://localhost:8028
 ```
 
-To deploy the committed state as a Hugging Face Docker Space (create the Space with SDK "Docker" first; git asks
-for the user name and an access token with write permission):
+To deploy the committed state as a static Hugging Face Space (create the Space with SDK "Static" first; git
+asks for the user name and an access token with write permission):
 
 ```bash
 scripts/deploy-space.sh <user>/<space>
+```
+
+## Demo container
+
+The `Dockerfile` runs the prototype with its server (port 7860):
+
+```bash
+docker build -t dialog-first . && docker run -p 7860:7860 dialog-first
 ```
 
 ## Figures for the paper
