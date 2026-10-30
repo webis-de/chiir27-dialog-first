@@ -22,7 +22,7 @@ into the answers.
 
 ## Live demo
 
-**Try it: <DEMO-URL>**
+**Try it: https://huggingface.co/spaces/dialog-first/demo**
 
 No installation is needed. A task to start with: find a light laptop under €1,000 that is delivered tomorrow
 and has a long battery life, compare a few candidates, and put one into the (fake) cart. The demo is the
