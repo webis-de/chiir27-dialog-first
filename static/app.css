@@ -162,6 +162,11 @@ table.result tr:last-child td { border-bottom: 0; }
 /* Follow-up questions */
 .followups { margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .followups .chip { font-size: 13.5px; padding: 3px 12px; }
+.candidates { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.candidate-row { display: flex; align-items: center; gap: 10px; }
+.candidates .chip { font-size: 13.5px; padding: 3px 12px; }
+.candidate-meta { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.candidates pre.sql { margin-top: 6px; }
 
 /* Shop offers and the fake cart */
 table.offers { width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -238,6 +243,9 @@ body.figure main.wrap { max-width: none; padding-top: 16px; padding-bottom: 16px
    (scripts/screenshots.sh with WIDTH=580 and crop=<px>). */
 body.figure .panel-main.with-facets { grid-template-columns: 124px 1fr; }
 body.figure .facets { padding: 2px 6px 8px; }
+body.figure .candidates .chip { font-size: 12px; padding: 2px 8px; }
+body.figure .candidates { gap: 4px; }
+body.figure .candidate-meta { font-size: 11.5px; }
 body.figure .facets .chip { white-space: nowrap; font-size: 11.5px; padding: 1px 6px; }  /* facet values on one line */
 body.figure .facets .label { margin: 8px 0 4px; }
 body.figure .list-item { grid-template-columns: 92px 1fr; gap: 10px; padding: 10px 34px 10px 10px; }

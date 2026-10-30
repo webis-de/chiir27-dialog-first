@@ -2,7 +2,8 @@
    answer: ask (typed question, with the selected products), facet [attr, value] (filters in place),
    expand <brand> (view change), price <model name>, followup <index>, view cards|list|table, select <model name>
    (attaches it to the next question), open <model name> (product page), type <text> (into the composer,
-   not sent), sort <attr:dir>, close (the product page), cart (adds the cheapest offer of an offers answer).
+   not sent), sort <attr:dir>, close (the product page), cart (adds the cheapest offer of an offers answer),
+   choose <index> (a candidate interpretation of a vague question), query <index> (shows its query).
    A badge labels the step in the figure. */
 window.SCENARIOS = {
   // Figure in the paper: aggregation that facets cannot express, drill-down within the table,
@@ -20,7 +21,8 @@ window.SCENARIOS = {
   // The shopping task of the paper and the storyboard (scripts/storyboards.py). Badges are the step numbers
   // of the paper: (1) is the opening answer; (2) to (10) follow.
   shopping: [
-    { ask: "Which brands offer the most battery life per euro among lightweight laptops?", badge: "2" },
+    { ask: "Which brands offer the best value among lightweight laptops?" },
+    { choose: 0, badge: "2" },
     { facet: ["ram_gb", 16], badge: "3" },
     { expand: "Lumo", badge: "4" },
     { ask: "Which lightweight laptops under €1,000 available for delivery tomorrow have the longest battery life?", badge: "5" },
@@ -33,6 +35,12 @@ window.SCENARIOS = {
     { ask: "Which of them is the lightest?", badge: "8" },
     { price: "Lumo Air 13", badge: "9" },
     { cart: true },
+  ],
+  // A vague question answered with candidate interpretations, one of which is chosen.
+  clarify: [
+    { ask: "Which laptop is best for students?", badge: "1" },
+    { query: 1 },
+    { choose: 1, badge: "2" },
   ],
   // Typed refinement of the previous answer.
   refine: [

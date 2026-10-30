@@ -179,6 +179,7 @@ function renderTurn(t, latest) {
   if (a.kind === "unanswerable" || a.kind === "error") {
     return `<div class="turn system">${head}<p class="interpretation">${esc(a.interpretation)}</p>${examples(t, a.examples || [])}</div>`;
   }
+  if (a.kind === "clarify") return renderClarify(t, head, latest);
   const start = t.parent === null ? "start" : "";
   // Figures keep earlier answers open, unless they ask for minimizing (collapse=1).
   const minimizable = settings.collapse && !latest && (!settings.figure || params.get("collapse") === "1");
@@ -196,6 +197,23 @@ function renderTurn(t, latest) {
     ${renderPanel(t)}
     ${observations ? `<ul class="observations">${observations}</ul>` : ""}
     ${followups ? `<div class="followups">${followups}</div>` : ""}${examples(t, a.examples || [])}${minimize}</div>`;
+}
+
+/** A vague question: candidate interpretations, each an executable query verbalized as a question (P3);
+    choosing one poses it as the user's question (P4). */
+function renderClarify(t, head, latest) {
+  const a = t.answer;
+  const items = a.candidates.map((c, i) => {
+    const noun = c.kind === "list" ? "laptop" : "brand";
+    const size = `${c.total} ${noun}${c.total === 1 ? "" : "s"}`;
+    const shown = t.ui.marks[`sql:${i}`];
+    const query = `<span class="view" ${action(() => { t.ui.marks[`sql:${i}`] = !shown; render(); }, { view: true })}>${shown ? "▴ Query" : "▸ Query"}</span>`;
+    return `<li><div class="candidate-row">${badge(t.ui.marks[`choose:${i}`])}<span class="chip ${t.ui.marks[`choose:${i}`] ? "marked" : ""}"
+      ${action(() => act(t.id, c.plan, "chosen interpretation"), { note: c.interpretation })}>${esc(c.question)}</span>
+      <span class="candidate-meta">${size} · ${query}</span></div>${shown ? `<pre class="sql">${esc(c.sql)}</pre>` : ""}</li>`;
+  }).join("");
+  return `<div class="turn system clarify">${head}<p class="interpretation">${esc(a.interpretation)}</p>
+    <ol class="candidates">${items}</ol></div>`;
 }
 
 function resultSize(a) {
@@ -651,6 +669,12 @@ async function replay(steps) {
     } else if (step.price) {
       const p = find(step.price);
       await act(t.id, offersPlan(t, p), "written for your click", step.badge);
+    } else if (step.choose !== undefined) {
+      t.ui.marks[`choose:${step.choose}`] = step.badge;  // the badge marks the candidate, not the turn
+      await act(t.id, a.candidates[step.choose].plan, "chosen interpretation");
+    } else if (step.query !== undefined) {
+      t.ui.marks[`sql:${step.query}`] = true;
+      render();
     } else if (step.followup !== undefined) {
       await act(t.id, a.followups[step.followup].plan, "suggested follow-up", step.badge);
     } else if (step.view) {

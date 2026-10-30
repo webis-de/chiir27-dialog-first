@@ -431,6 +431,92 @@ def parse(text: str, catalog: Catalog, context: Plan | None = None, selection: l
 
 
 # ---------------------------------------------------------------------------------------------------
+# Vague questions: candidate interpretations (P3)
+
+# A vague phrase has candidate readings, each a change to the plan with a weight for how likely it is meant.
+# If the most likely reading reaches CONFIDENT, the question is answered with it directly; otherwise the
+# system offers the readings as executable plans, each verbalized as an unambiguous question.
+CONFIDENT = 0.6
+BEST = r"(?<!rated )\b(?:the\s+)?(?:best|top|good|great)\b(?!\s*-?\s*(?:rated|reviews?|battery|value))"
+USAGES = [
+    (r"\b(?:(?:the\s+)?(?:best|good|great)\s+)?value(?: for (?:money|the price))?\b", "best value", [
+        (0.5, "the most battery life per euro", [], ("battery_per_100eur", "desc")),
+        (0.3, "the cheapest", [], ("price", "asc")),
+        (0.2, "the best rated", [], ("rating", "desc")),
+    ]),
+    (r"\bfor (?:a |the )?(?:students?|university|college|studying|school)\b", "for students", [
+        (0.4, "the most recommended under €1,000", [("price", "<", 1000)], ("recommended", "desc")),
+        (0.35, "light with the longest battery life", [("weight_kg", "<=", LIGHTWEIGHT)], ("battery_h", "desc")),
+        (0.25, "the cheapest", [], ("price", "asc")),
+    ]),
+    (r"\bfor (?:travel(?:l?ing)?|commuting|on the go|the road)\b", "for travel", [
+        (0.75, "light with the longest battery life", [("weight_kg", "<=", LIGHTWEIGHT)], ("battery_h", "desc")),
+        (0.25, "the lightest", [("weight_kg", "<=", LIGHTWEIGHT)], ("weight_kg", "asc")),
+    ]),
+]
+BEST_READINGS = [
+    (0.4, "the most recommended", [], ("recommended", "desc")),
+    (0.25, "the best rated", [], ("rating", "desc")),
+    (0.2, "the most battery life per euro", [], ("battery_per_100eur", "desc")),
+    (0.15, "the longest battery life", [], ("battery_h", "desc")),
+]
+# For brands, a reading's sort becomes the metric per brand.
+SORT_METRICS = {"recommended": "avg_rating", "rating": "avg_rating", "battery_per_100eur": "battery_per_100eur",
+                "battery_h": "avg_battery", "price": "avg_price", "weight_kg": "avg_battery"}
+GROUP_LABELS = {"avg_rating": "the best rated on average", "battery_per_100eur": "the most battery life per euro",
+                "avg_battery": "the longest battery life on average", "avg_price": "the cheapest on average"}
+
+
+class Reading:
+    def __init__(self, weight: float, label: str, plan: Plan):
+        self.weight, self.label, self.plan = weight, label, plan
+
+
+def readings(text: str, catalog: Catalog, context: Plan | None = None,
+             selection: list[int] | None = None) -> tuple[str, list[Reading]] | None:
+    """Candidate readings of a vague question such as "Which laptop is the best?", most likely first, with
+    the vague phrase; None if the question is not vague (it is then parsed as usual)."""
+    lowered = text.lower()
+    usage = next(((m, term, options) for pattern, term, options in USAGES if (m := re.search(pattern, lowered))), None)
+    best = re.search(BEST, lowered)
+    if usage:
+        match, term, options = usage
+    elif best:
+        match, term, options = best, best.group(0).replace("the ", "").strip(), BEST_READINGS
+    else:
+        return None
+    rest = re.sub(BEST, " ", lowered[:match.start()] + " " + lowered[match.end():])
+    parsed = parse_text(rest, catalog)
+    if parsed.sort or parsed.product or parsed.kind in ("count", "offers"):
+        return None  # an explicit criterion, e.g. "the best cheap laptops", settles the question
+    base = parse(rest, catalog, context, selection)
+    if base is None and context is not None and context.kind in ("list", "group") and not selection:
+        base = context
+    if base is None or base.kind not in ("list", "group") or base.filter_value("name") is not None:
+        return None
+    result = []
+    for weight, label, filters, (attr, direction) in options:
+        plan = base
+        for f in filters:
+            plan = plan.with_filter(*f)
+        if plan.kind == "group":
+            plan = plan.model_copy(update={"metric": SORT_METRICS[attr]})
+        else:
+            plan = plan.model_copy(update={"sort": Sort(attr=attr, dir=direction)})
+        label = label if plan.kind == "list" else GROUP_LABELS[plan.metric]
+        result.append(Reading(weight, label, Plan.model_validate(plan.model_dump())))
+    # Readings that coincide (e.g. two metrics per brand) are offered once.
+    unique = {}
+    for r in sorted(result, key=lambda r: -r.weight):
+        key = r.plan.model_dump_json()
+        if key in unique:
+            unique[key].weight += r.weight
+        else:
+            unique[key] = r
+    return term, sorted(unique.values(), key=lambda r: -r.weight)
+
+
+# ---------------------------------------------------------------------------------------------------
 # Observations and follow-up questions
 
 

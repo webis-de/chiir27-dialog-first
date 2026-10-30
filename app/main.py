@@ -52,6 +52,27 @@ def answer(plan: Plan) -> dict:
     }
 
 
+def clarify(term: str, readings: list[lang.Reading]) -> dict:
+    """A vague question: answered with its most likely reading if that is likely enough, which the answer
+    states, with the other readings as follow-ups; otherwise the readings are offered as candidates, each an
+    executable plan verbalized as an unambiguous question (P3)."""
+    top = readings[0]
+    if top.weight >= lang.CONFIDENT:
+        a = answer(top.plan)
+        others = [{"question": lang.question(r.plan, catalog), "plan": r.plan.model_dump()} for r in readings[1:]]
+        return {**a, "interpretation": f"I read “{term}” as {top.label}. {a['interpretation']}",
+                "followups": (others + a["followups"])[:3]}
+    candidates = []
+    for r in readings:
+        result = execute(catalog, r.plan)
+        candidates.append({"question": lang.question(r.plan, catalog), "plan": r.plan.model_dump(),
+                           "interpretation": lang.interpretation(r.plan, catalog), "sql": result["sql"],
+                           "total": result["total"] if r.plan.kind == "list" else len(result["rows"]),
+                           "kind": r.plan.kind})
+    return {"kind": "clarify", "term": term, "candidates": candidates,
+            "interpretation": f"“{term[0].upper() + term[1:]}” can mean several things. Which do you mean?"}
+
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
@@ -72,6 +93,9 @@ def start():
 @app.post("/api/ask")
 def ask(body: AskIn):
     selection = [i for i in body.selection if i in catalog.by_id]
+    vague = lang.readings(body.text, catalog, body.context, selection)
+    if vague:
+        return clarify(*vague)
     plan = lang.parse(body.text, catalog, body.context, selection)
     if plan is None:
         return {

@@ -30,6 +30,11 @@ observations and follow-up questions, and the facets shown inside the answer (`a
 - Typed questions are parsed into plans by a small rule-based parser; questions without reference to the
   catalog are answered with what can be asked (P2). Short follow-ups such as "only with 16 GB RAM" refine
   the previous answer.
+- Vague questions such as "Which laptop is best for students?" have candidate readings, each a query plan with a
+  weight for how likely it is meant (`language.readings`). If the most likely reading is likely enough, the
+  answer states it ("I read “for travel” as …") and offers the other readings as follow-ups; otherwise the
+  system offers the readings as candidates: each is already an executable query (its SQL is shown on request),
+  verbalized as an unambiguous question, and choosing one poses that question as the user's turn.
 - Facet values filter the answer in place: the answer is re-queried and replaced without a new turn; active
   filters are shown above the facets and can be removed.
 - Clicks that pose a new query (price, follow-up question, "… more" in a group) send a plan;
@@ -93,8 +98,8 @@ The paper uses
 
 ```bash
 WIDTH=580 scripts/screenshots.sh ../chiir27-dialog-first-figures 'opening:shopping&until=0&composer=1&crop=620' \
-  'refined:shopping&until=3&last=2&crop=620' 'product:shopping&until=10&composer=1&crop=620' \
-  'offers:shopping&until=12&last=4&collapse=1&crop=620'
+  'refined:shopping&until=4&last=3&crop=620' 'product:shopping&until=11&composer=1&crop=620' \
+  'offers:shopping&until=13&last=4&collapse=1&crop=620'
 ```
 
 ## Storyboards for the presentation

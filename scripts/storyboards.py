@@ -1,5 +1,5 @@
 """Printable storyboard of the scenario "shopping" (static/scenarios.js) for the station "Compare" of the
-interactive presentation: an A3 sheet with nine frames, captions, and lines for attendees' notes on where the
+interactive presentation: an A3 sheet with ten frames, captions, and lines for attendees' notes on where the
 design helps or hinders. Further design variants (e.g. "action") can be added to VARIANTS, one sheet each.
 
 Requires a running server (default http://localhost:8027) and google-chrome.
@@ -25,25 +25,26 @@ TASK = ("A student looks for a light laptop under €1,000 that is delivered tom
 FRAMES = [
     (0, "Opening answer", "The dialog opens with an answer: all laptops, most recommended first, with facets and "
                           "example questions."),
-    (1, "A question facets cannot ask", "“Which brands offer the most battery life per euro among lightweight "
-                                        "laptops?” The answer first states its interpretation."),
-    (2, "Facet: 16 GB RAM", {
+    (2, "A vague question, clarified", "“Which brands offer the best value among lightweight laptops?” The "
+                                       "system offers three readings, each an unambiguous question backed by a "
+                                       "query; the chosen one becomes the student's turn."),
+    (3, "Facet: 16 GB RAM", {
         "query": "The facet value refines the answer in place; the filter stays removable. No new turn.",
         "action": "The facet value is written as a new user turn; the earlier answer is minimized."}),
-    (3, "Expand a brand", {
+    (4, "Expand a brand", {
         "query": "Expanding Lumo shows its models within the table. No new turn.",
         "action": "Expanding Lumo is written as a new user turn as well."}),
-    (4, "A new question", "Light laptops under €1,000, delivered tomorrow, with the longest battery life. The "
+    (5, "A new question", "Light laptops under €1,000, delivered tomorrow, with the longest battery life. The "
                           "earlier answers shrink to their interpretation."),
-    (6, "Product page", "Clicking a laptop opens its page in place of the dialog; the input box stays. The circle "
+    (7, "Product page", "Clicking a laptop opens its page in place of the dialog; the input box stays. The circle "
                         "selects the Aero 13."),
-    (10, "Collecting candidates", "Back in the list, the student selects the Lumo Air 13 and opens the Aero 14: it "
+    (11, "Collecting candidates", "Back in the list, the student selects the Lumo Air 13 and opens the Aero 14: it "
                                   "is attached to the question next to the two selected laptops."),
-    (11, "Asking about the selection", "“Which of them is the lightest?” refers only to the attached laptops, which "
+    (12, "Asking about the selection", "“Which of them is the lightest?” refers only to the attached laptops, which "
                                        "the user turn records; the delivery condition still holds."),
-    (12, "A click becomes a question", "The click on the price of the Lumo Air 13 is written as the student's "
+    (13, "A click becomes a question", "The click on the price of the Lumo Air 13 is written as the student's "
                                        "question and keeps the condition: offers delivered tomorrow."),
-    (13, "Add to cart", "The cheapest offer delivered tomorrow goes into the (fake) cart; the way to the purchase "
+    (14, "Add to cart", "The cheapest offer delivered tomorrow goes into the (fake) cart; the way to the purchase "
                         "stays within the dialog."),
 ]
 

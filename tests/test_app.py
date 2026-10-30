@@ -125,3 +125,28 @@ def test_product_page():
 def test_examples_are_understood_and_verbalized_as_typed(text):
     parsed = lang.parse(text, catalog)
     assert parsed is not None and lang.question(parsed, catalog) == text and execute(catalog, parsed)["rows"]
+
+
+def test_vague_question_offers_unambiguous_candidates():
+    a = client.post("/api/ask", json={"text": "Which laptop is best for students?"}).json()
+    assert a["kind"] == "clarify" and len(a["candidates"]) == 3
+    for c in a["candidates"]:
+        # Each candidate is an executable plan whose question, typed in again, is no longer vague.
+        assert c["sql"].startswith("SELECT") and c["total"] > 0
+        assert lang.readings(c["question"], catalog) is None
+        assert lang.parse(c["question"], catalog) == Plan.model_validate(c["plan"])
+    chosen = client.post("/api/query", json={"plan": a["candidates"][1]["plan"]}).json()
+    assert chosen["question"] == "Which lightweight laptops have the longest battery life?"
+
+
+def test_likely_reading_is_answered_directly_and_stated():
+    a = client.post("/api/ask", json={"text": "a good laptop for travel"}).json()
+    assert a["kind"] == "list" and a["interpretation"].startswith("I read “for travel” as")
+    assert a["followups"][0]["question"] == "Which lightweight laptops are the lightest?"
+
+
+def test_explicit_criteria_are_not_vague():
+    for text in ["Which laptops are rated best?", "the best cheap laptops", "good battery laptops"]:
+        assert lang.readings(text, catalog) is None
+    sel = client.post("/api/ask", json={"text": "Which of them is the best?", "selection": [1, 2, 3]}).json()
+    assert sel["kind"] == "clarify" and all(c["plan"]["ids"] == [1, 2, 3] for c in sel["candidates"])
