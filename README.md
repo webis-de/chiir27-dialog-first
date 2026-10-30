@@ -92,6 +92,13 @@ The `Dockerfile` runs the prototype as a demo (port 7860, e.g., a Hugging Face S
 docker build -t dialog-first . && docker run -p 7860:7860 dialog-first
 ```
 
+To deploy the committed state as a Hugging Face Docker Space (create the Space with SDK "Docker" first; git asks
+for the user name and an access token with write permission):
+
+```bash
+scripts/deploy-space.sh <user>/<space>
+```
+
 ## Figures for the paper
 
 `static/scenarios.js` defines scripted sessions with numbered badges (e.g. `paper`, `cards`, `refine`).
