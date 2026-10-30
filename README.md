@@ -10,6 +10,15 @@ into the answers.
 - Catalog: 64 laptops of 8 fictional brands and 6 shops, generated from a fixed seed (`app/catalog.py`);
   products are shown as neutral placeholder drawings (`/img/<id>.svg`)
 
+> **Note on language understanding.** In a real Dialog-First application, a large language model interprets
+> the user's questions: it translates them into query plans, recognizes vague questions, and proposes their
+> readings. This prototype replaces the model with a small rule-based parser (`app/language.py`) for
+> convenience: it runs offline without API keys or GPU, deploys as a single small container, answers
+> instantly at no cost, and behaves deterministically, which keeps tests and the figures of the paper
+> reproducible. The parser understands the questions of the shopping task and many variations, but not
+> arbitrary free-form questions. The interaction design, which the paper is about, does not depend on how
+> questions are interpreted: the parser and a language model produce the same query plans.
+
 ## Live demo
 
 **Try it: <DEMO-URL>**
@@ -27,9 +36,9 @@ observations and follow-up questions, and the facets shown inside the answer (`a
 - The dialog opens with a first answer: a welcome with a summary of the catalog, all laptops (most recommended
   first) with facets on the left, and example questions. Short typed questions refine this list.
   Lists are sorted by recommendation (rating weighted by the number of reviews) unless a question asks otherwise.
-- Typed questions are parsed into plans by a small rule-based parser; questions without reference to the
-  catalog are answered with what can be asked (P2). Short follow-ups such as "only with 16 GB RAM" refine
-  the previous answer.
+- Typed questions are parsed into plans by a small rule-based parser that stands in for a language model (see
+  the note above); questions without reference to the catalog are answered with what can be asked (P2).
+  Short follow-ups such as "only with 16 GB RAM" refine the previous answer.
 - Vague questions such as "Which laptop is best for students?" have candidate readings, each a query plan with a
   weight for how likely it is meant (`language.readings`). If the most likely reading is likely enough, the
   answer states it ("I read “for travel” as …") and offers the other readings as follow-ups; otherwise the
@@ -116,7 +125,7 @@ Further variants can be added to `VARIANTS` in the script, one sheet each.
 
 ## Next steps
 
-- LLM-based interpreter behind `language.parse` for free-form questions (the rule-based parser stays the
-  reproducible default for figures).
+- Language model behind `language.parse` and `language.readings`, as in our other Dialog-First applications
+  (the rule-based parser stays the reproducible default for tests and figures).
 - Further design variants, e.g. drill-down into members without a turn vs. with a turn, hover vs. click
   verbalization, and facets in answers vs. a facet panel.
