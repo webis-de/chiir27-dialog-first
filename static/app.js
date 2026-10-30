@@ -150,7 +150,17 @@ function render(scroll = false) {
   thread.innerHTML = path().map((t) => renderTurn(t, t === latest)).join("");
   $("#stage").innerHTML = stage ? renderStage() : "";
   renderSelection();
-  if (scroll && !replaying) thread.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // The latest exchange starts at the top of the window: the question, then its answer. Scrolling to the
+  // question at once, rather than smoothly, hides the shift caused by minimizing earlier answers; space below
+  // the answer lets the question stay in place while the answer arrives.
+  const question = [...thread.querySelectorAll(".turn.user")].pop();
+  thread.style.paddingBottom = "";
+  if (question && !settings.figure) {
+    const below = thread.getBoundingClientRect().bottom - question.getBoundingClientRect().top;
+    const room = window.innerHeight - $("#composer").offsetHeight - 16;
+    thread.style.paddingBottom = `${Math.max(0, room - below)}px`;
+  }
+  if (scroll && !replaying) question?.scrollIntoView({ block: "start" });
   $("#composer button[type=submit]").disabled = busy;
 }
 
