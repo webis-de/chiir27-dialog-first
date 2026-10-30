@@ -14,8 +14,8 @@ into the answers.
 > **Note on language understanding.** In a real Dialog-First application, a large language model interprets
 > the user's questions: it translates them into query plans, recognizes vague questions, and proposes their
 > readings. This prototype replaces the model with a small rule-based parser (`app/language.py`) for
-> convenience: it runs offline without API keys or GPU, deploys as a single small container, answers
-> instantly at no cost, and behaves deterministically, which keeps tests and the figures of the paper
+> convenience: it runs offline without API keys or GPU, even entirely in the browser (the live demo needs no
+> server), answers instantly at no cost, and behaves deterministically, which keeps tests and the figures of the paper
 > reproducible. The parser understands the questions of the shopping task and many variations, but not
 > arbitrary free-form questions. The interaction design, which the paper is about, does not depend on how
 > questions are interpreted: the parser and a language model produce the same query plans.
